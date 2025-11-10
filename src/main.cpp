@@ -11,7 +11,7 @@
 
 
 
-#define PAUSE(Milli) std::this_thread::sleep_for(std::chrono::milliseconds(Milli))
+#define PAUSE(M) std::this_thread::sleep_for(std::chrono::milliseconds(M))
 
 
 
