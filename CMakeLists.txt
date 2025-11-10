@@ -3,11 +3,14 @@ cmake_policy(SET CMP0077 NEW)
 
 project(cxmf VERSION 1.0.0 LANGUAGES CXX)
 
-option(CXMF_INCLUDE_IMPORTER "Include the glTF/FBX importer (assimp)" ON)
+option(CXMF_BUILD_ZLIB "Build zlib" ON)
+option(CXMF_INCLUDE_IMPORTER "Include glTF 2.0 importer (includes assimp, glm, meshoptimizer)" ON)
 
-set(IS_STANDALONE_BUILD OFF)
+
+
+set(CXMF_IS_STANDALONE_BUILD OFF)
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
-	set(IS_STANDALONE_BUILD ON)
+	set(CXMF_IS_STANDALONE_BUILD ON)
 endif()
 
 
@@ -19,22 +22,17 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-if(NOT FETCHCONTENT_BASE_DIR OR (FETCHCONTENT_BASE_DIR STREQUAL ""))
-	set(FETCHCONTENT_BASE_DIR ${CMAKE_SOURCE_DIR}/build/_deps CACHE PATH "" FORCE)
-endif()
-include(FetchContent)
-include(cmake/dependencies.cmake)
-
-
-
 set(SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set(LIBRARIES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
+
+include(cmake/dependencies.cmake)
 
 set(SOURCE_FILES
 	${SOURCE_DIR}/CXMF.cpp
 )
 
-if(IS_STANDALONE_BUILD)
+if(CXMF_IS_STANDALONE_BUILD)
 	list(APPEND SOURCE_FILES ${SOURCE_DIR}/main.cpp)
 	if(MSVC)
 		list(APPEND SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/resources/resource.rc)
@@ -51,7 +49,7 @@ target_compile_definitions(cxmf PUBLIC
 
 target_include_directories(cxmf PUBLIC ${INCLUDE_DIR})
 target_include_directories(cxmf PRIVATE ${SOURCE_DIR})
-target_link_libraries(cxmf PRIVATE zlibstatic)
+target_link_libraries(cxmf PRIVATE ${ZLIB_LIBRARIES})
 
 if(CXMF_INCLUDE_IMPORTER)
 	target_compile_definitions(cxmf PRIVATE CXMF_INCLUDE_IMPORTER)

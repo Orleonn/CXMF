@@ -5,18 +5,16 @@ set(SKIP_INSTALL_ALL ON)
 set(SKIP_INSTALL_HEADERS ON)
 set(SKIP_INSTALL_FILES ON)
 
-set(CXMF_FETCH_CONTENTS)
-
-set(ZLIB_LIBRARIES "zlibstatic" CACHE STRING "" FORCE)
-set(ZLIB_BUILD_EXAMPLES OFF)
-
-FetchContent_Declare(
-	zlib
-	GIT_REPOSITORY	https://github.com/madler/zlib.git
-	GIT_TAG			51b7f2abdade71cd9bb0e7a373ef2610ec6f9daf # 1.3.1
-	OVERRIDE_FIND_PACKAGE
-)
-list(APPEND CXMF_FETCH_CONTENTS zlib)
+find_package(zlib)
+if(NOT ZLIB_FOUND AND NOT CXMF_BUILD_ZLIB)
+	message(FATAL_ERROR "CXMF_BUILD_ZLIB is OFF but unable to find zlib dependency via 'find_package'")
+elseif(NOT ZLIB_FOUND)
+	set(ZLIB_BUILD_EXAMPLES OFF)
+	set(ZLIB_FOUND ON)
+	set(ZLIB_LIBRARIES zlibstatic)
+	set(ZLIB_INCLUDE_DIR ${LIBRARIES_DIR}/zlib)
+	add_subdirectory(${LIBRARIES_DIR}/zlib)
+endif()
 
 if(CXMF_INCLUDE_IMPORTER)
 	set(ASSIMP_BUILD_M3D_IMPORTER OFF)
@@ -61,22 +59,7 @@ if(CXMF_INCLUDE_IMPORTER)
 	set(MESHOPT_WERROR ON)
 	set(MESHOPT_INSTALL OFF)
 
-	FetchContent_Declare(
-		assimp
-		GIT_REPOSITORY	https://github.com/assimp/assimp.git
-		GIT_TAG			fb375dd8c0a032106a2122815fb18dffe0283721 # 6.0.2
-	)
-	FetchContent_Declare(
-		glm
-		GIT_REPOSITORY	https://github.com/g-truc/glm.git
-		GIT_TAG			0af55ccecd98d4e5a8d1fad7de25ba429d60e863 # 1.0.1
-	)
-	FetchContent_Declare(
-		meshoptimizer
-		GIT_REPOSITORY	https://github.com/zeux/meshoptimizer.git
-		GIT_TAG			6daea4695c48338363b08022d2fb15deaef6ac09 # 0.25
-	)
-	list(APPEND CXMF_FETCH_CONTENTS assimp glm meshoptimizer)
+	add_subdirectory(${LIBRARIES_DIR}/assimp)
+	add_subdirectory(${LIBRARIES_DIR}/glm)
+	add_subdirectory(${LIBRARIES_DIR}/meshoptimizer)
 endif()
-
-FetchContent_MakeAvailable(${CXMF_FETCH_CONTENTS})
