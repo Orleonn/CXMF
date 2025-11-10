@@ -5,7 +5,10 @@ set(SKIP_INSTALL_ALL ON)
 set(SKIP_INSTALL_HEADERS ON)
 set(SKIP_INSTALL_FILES ON)
 
-find_package(zlib)
+if(NOT CXMF_BUILD_ZLIB)
+	find_package(zlib)
+endif()
+
 if(NOT ZLIB_FOUND AND NOT CXMF_BUILD_ZLIB)
 	message(FATAL_ERROR "CXMF_BUILD_ZLIB is OFF but unable to find zlib dependency via 'find_package'")
 elseif(NOT ZLIB_FOUND)
