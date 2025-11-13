@@ -247,28 +247,21 @@ static std::istream& operator>>(std::istream& stream, cxmf::Mesh& mesh)
 static std::ostream& operator<<(std::ostream& stream, const cxmf::MeshHierarchy& mhi)
 {
 	const uint32_t nameLen = static_cast<uint32_t>(mhi.name.length());
-	const uint32_t indicesCount = static_cast<uint32_t>(mhi.meshIndices.size());
 	WRITE_PARAM(&nameLen, sizeof(nameLen));
-	WRITE_PARAM(&indicesCount, sizeof(indicesCount));
 	WRITE_PARAM(mhi.name.c_str(), nameLen);
 	WRITE_PARAM(mhi.localTransform.Data(), sizeof(mhi.localTransform));
-	WRITE_PARAM(mhi.worldTransform.Data(), sizeof(mhi.worldTransform));
-	WRITE_PARAM(mhi.meshIndices.data(), sizeof(uint32_t) * indicesCount);
+	WRITE_PARAM(&mhi.meshIndex, sizeof(mhi.meshIndex));
 	WRITE_PARAM(&mhi.parentIndex, sizeof(mhi.parentIndex));
 	return stream;
 }
 static std::istream& operator>>(std::istream& stream, cxmf::MeshHierarchy& mhi)
 {
 	uint32_t nameLen = 0;
-	uint32_t indicesCount = 0;
 	READ_PARAM(&nameLen, sizeof(nameLen));
-	READ_PARAM(&indicesCount, sizeof(indicesCount));
 	mhi.name.resize(nameLen);
-	mhi.meshIndices.resize(indicesCount);
 	READ_PARAM(mhi.name.data(), nameLen);
 	READ_PARAM(mhi.localTransform.Data(), sizeof(mhi.localTransform));
-	READ_PARAM(mhi.worldTransform.Data(), sizeof(mhi.worldTransform));
-	READ_PARAM(mhi.meshIndices.data(), sizeof(uint32_t) * indicesCount);
+	READ_PARAM(&mhi.meshIndex, sizeof(mhi.meshIndex));
 	READ_PARAM(&mhi.parentIndex, sizeof(mhi.parentIndex));
 	return stream;
 }
@@ -1340,25 +1333,26 @@ static uint32_t parseAssimpMesh(ImportContext& ctx, const aiScene& scene, aiMesh
 	return meshIndex;
 }
 
-static void parseAssimpMeshNode(ImportContext& ctx, const aiScene& scene, aiNode* root,	 //
-								uint32_t parentIndex, const glm::mat4& parentXForm)
+static void parseAssimpMeshNode(ImportContext& ctx, const aiScene& scene, aiNode* root, uint32_t parentIndex)
 {
 	if (!root || ctx.hasNode(root))	 //
 		return;
 
 	ctx.importedNodes.push_back(root);
 
-	glm::mat4 localTransform;
-	convertAssimpMatrixToGLM(localTransform, root->mTransformation);
-	const glm::mat4 worldTransform = parentXForm * localTransform;
-
 	if (root->mNumMeshes == 0)
 	{
 		for (uint32_t i_node = 0; i_node < root->mNumChildren; ++i_node)
 		{
-			parseAssimpMeshNode(ctx, scene, root->mChildren[i_node], parentIndex, worldTransform);
+			parseAssimpMeshNode(ctx, scene, root->mChildren[i_node], parentIndex);
 		}
 		return;
+	}
+
+	if (root->mNumMeshes != 1)
+	{
+		CXMF_LOG(ctx.logger, "FATAL ERROR: Node '{}' has more than one mesh!", root->mName.C_Str());
+		std::abort();
 	}
 
 	const uint32_t currentIndex = static_cast<uint32_t>(ctx.nodes.size());
@@ -1366,30 +1360,15 @@ static void parseAssimpMeshNode(ImportContext& ctx, const aiScene& scene, aiNode
 
 	node.name = root->mName.C_Str();
 	if (node.name.empty()) node.name = ctx.genDummyName();
-	convertGLMMatrixToCXMF(node.localTransform, localTransform);
-	convertGLMMatrixToCXMF(node.worldTransform, worldTransform);
+	convertAssimpMatrixToCXMF(node.localTransform, root->mTransformation);
 	node.parentIndex = parentIndex;
 
-	const auto hasMesh = [&node](uint32_t idx) -> bool
-	{
-		const std::vector<uint32_t>::const_iterator _End = node.meshIndices.cend();
-		return std::find(node.meshIndices.cbegin(), _End, idx) != _End;
-	};
-
-	node.meshIndices.reserve(root->mNumMeshes);
-	for (uint32_t i_mesh = 0; i_mesh < root->mNumMeshes; ++i_mesh)
-	{
-		aiMesh* const assimpMesh = scene.mMeshes[root->mMeshes[i_mesh]];
-		const uint32_t meshIndex = parseAssimpMesh(ctx, scene, assimpMesh);
-		if (!hasMesh(meshIndex))
-		{
-			node.meshIndices.push_back(meshIndex);
-		}
-	}
+	aiMesh* const assimpMesh = scene.mMeshes[root->mMeshes[0]];
+	node.meshIndex = parseAssimpMesh(ctx, scene, assimpMesh);
 
 	for (uint32_t i_node = 0; i_node < root->mNumChildren; ++i_node)
 	{
-		parseAssimpMeshNode(ctx, scene, root->mChildren[i_node], currentIndex, worldTransform);
+		parseAssimpMeshNode(ctx, scene, root->mChildren[i_node], currentIndex);
 	}
 }
 
@@ -1485,8 +1464,7 @@ static bool parseAssimp(const char* filename, ImportContext& ctx)
 		ctx.modelName = ctx.genDummyName();
 	}
 
-	const glm::mat4 rootXForm = glm::identity<glm::mat4>();
-	parseAssimpMeshNode(ctx, *scene, scene->mRootNode, INVALID_INDEX, rootXForm);
+	parseAssimpMeshNode(ctx, *scene, scene->mRootNode, INVALID_INDEX);
 	return true;
 }
 

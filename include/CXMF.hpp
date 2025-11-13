@@ -202,18 +202,12 @@ struct MeshHierarchy
 {
 	std::string name;
 	Mat4x4 localTransform;
-	Mat4x4 worldTransform;
-	std::vector<uint32_t> meshIndices;
+	uint32_t meshIndex;
 	uint32_t parentIndex;
 
 	CXMF_NODISCARD bool HasParent() const
 	{
 		return parentIndex != INVALID_INDEX;
-	}
-
-	CXMF_NODISCARD uint32_t MeshCount() const
-	{
-		return static_cast<uint32_t>(meshIndices.size());
 	}
 };
 

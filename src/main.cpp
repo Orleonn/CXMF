@@ -686,16 +686,7 @@ static void option_showModelNodes()
 			cmd::cout << "<NO-PARENT>";
 		cmd::cout << '\n';
 
-		cmd::cout << "\tMesh IDs: [";
-		for (size_t j = 0; j < node.meshIndices.size(); ++j)
-		{
-			cmd::cout << node.meshIndices[j];
-			if (j != (node.meshIndices.size() - 1))
-			{
-				cmd::cout << ", ";
-			}
-		}
-		cmd::cout << "]\n";
+		cmd::cout << "\tMesh ID: " << node.meshIndex << " \"" << currentModel->meshes[node.meshIndex].name << "\"\n";
 
 		cmd::cout << cmd::endl;
 	}
